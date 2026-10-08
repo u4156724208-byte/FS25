@@ -9,8 +9,11 @@ const discordToken = process.env.FARMING_SIMULATOR_BOT_DISCORD_TOKEN || process.
 const channelId = process.env.FARMING_SIMULATOR_BOT_CHANNEL_ID || process.env.DISCORD_CHANNEL_ID;
 
 const FS_HOST = process.env.FS_HOST || '46.251.234.146';
-const FS_PORT = process.env.FS_PORT || '10900';
+const FS_PORT = process.env.FS_PORT || '10910';
 const FS_CODE = process.env.FS_CODE || '';
+// supporta anche le variabili vecchie con URL completo
+const FEED_URL_ENV = process.env.FARMING_SIMULATOR_BOT_DSS_URL || process.env.FARMING_SIMULATOR_BOT_FEED_URL || process.env.FARMING_SIMULATOR_BOT_FEED_DSS || process.env.FARMING_SIMULATOR_BOT_FEED_DSS_URL || process.env.FEED_DSS_URL || '';
+
 
 let db = { servers: [] };
 function merge(t,s){ return Object.assign(t,s); }
@@ -21,11 +24,17 @@ let intervalTimer;
 let lastMessageId = null;
 
 async function fetchFS25Stats(){
-  const urls = [
-    `http://${FS_HOST}:${FS_PORT}/feed/dedicated-server-stats.xml${FS_CODE ? `?code=${FS_CODE}` : ''}`,
-    `http://${FS_HOST}:${FS_PORT}/feed/dedicated-server-stats.json${FS_CODE ? `?code=${FS_CODE}` : ''}`,
-    `https://${FS_HOST}:${FS_PORT}/feed/dedicated-server-stats.xml${FS_CODE ? `?code=${FS_CODE}` : ''}`
-  ];
+  let urls = [];
+  if (FEED_URL_ENV) {
+    console.log('Uso FEED_URL da ENV:', FEED_URL_ENV);
+    urls.push(FEED_URL_ENV);
+    // prova anche senza ?code se c'è
+    if (!FEED_URL_ENV.includes('?code=') && FS_CODE) urls.push(`${FEED_URL_ENV}?code=${FS_CODE}`);
+  }
+  urls.push(`http://${FS_HOST}:${FS_PORT}/feed/dedicated-server-stats.xml${FS_CODE ? `?code=${FS_CODE}` : ''}`);
+  urls.push(`http://${FS_HOST}:${FS_PORT}/feed/dedicated-server-stats.json${FS_CODE ? `?code=${FS_CODE}` : ''}`);
+  urls.push(`https://${FS_HOST}:${FS_PORT}/feed/dedicated-server-stats.xml${FS_CODE ? `?code=${FS_CODE}` : ''}`);
+
   for (const url of urls) {
     try {
       console.log(`Tentativo fetch: ${url}`);
