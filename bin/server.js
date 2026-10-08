@@ -1,4 +1,13 @@
 import { Client, GatewayIntentBits, EmbedBuilder } from 'discord.js';
+import http from 'http';
+
+// Mini web server per Render (obbligatorio per Web Service)
+const PORT = process.env.PORT || 10000;
+http.createServer((req, res) => {
+  res.writeHead(200, {'Content-Type': 'text/plain'});
+  res.end('FS25 Bot Running - OK');
+}).listen(PORT, () => console.log(`Web server per Render su porta ${PORT}`));
+
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers] });
 
 console.log('=== ENV CHECK ===');
@@ -50,7 +59,6 @@ async function fetchSavegameFile(fileNameBase){
 function parseMoneyFromAnyXml(xml){
   if(!xml) return null;
   try{
-    // 1) <farm money="123456">
     const farmMoneyMatches=[...xml.matchAll(/<farm[^>]*money="([^"]+)"/gi)];
     if(farmMoneyMatches.length>0){
       let best=null;
@@ -60,12 +68,10 @@ function parseMoneyFromAnyXml(xml){
       }
       if(best!==null){ console.log(`Trovato money da <farm money>: ${best}`); return best; }
     }
-    // 2) <money>123</money> o <Money>
     let moneyTag=xml.match(/<money[^>]*>([^<]+)<\/money>/i);
     if(moneyTag){ const v=parseFloat(moneyTag[1].replace(/[^0-9.-]/g,'')); if(!isNaN(v)){ console.log(`Trovato money da <money>: ${v}`); return v; } }
     moneyTag=xml.match(/<Money[^>]*>([^<]+)<\/Money>/);
     if(moneyTag){ const v=parseFloat(moneyTag[1].replace(/[^0-9.-]/g,'')); if(!isNaN(v)){ console.log(`Trovato money da <Money>: ${v}`); return v; } }
-    // 3) money="123" generico
     const generic=xml.match(/money\s*=\s*"([^"]+)"/i);
     if(generic){ const v=parseFloat(generic[1]); if(!isNaN(v)){ console.log(`Trovato money generico: ${v}`); return v; } }
   }catch{}
@@ -84,7 +90,6 @@ function parseMapFromCareer(xml){
 
 async function getServerStats(){
   try{
-    // STATS
     const statsRes=await fetch(`${FS25_DASH}/feed/dedicated-server-stats.xml?code=${FS25_CODE}`);
     let statsXml=statsRes.ok?await statsRes.text():'';
     console.log(`Stats fetch: ${statsXml.length} bytes`);
@@ -99,20 +104,16 @@ async function getServerStats(){
       players=playerMatches.map(m=>m[1].trim()).filter(Boolean);
     }
 
-    // CAREER per mappa
     const careerXml=await fetchSavegameFile('careerSavegame');
     let rawMap=parseMapFromCareer(careerXml);
     let mapPretty=rawMap?prettyMapName(rawMap):'N/D';
     if(rawMap) console.log(`Mappa: ${rawMap} -> ${mapPretty}`);
 
-    // ECONOMY (209KB - funziona sempre)
     const economyXml=await fetchSavegameFile('economy');
     if(economyXml) console.log(`Economy OK: ${economyXml.length} bytes`);
 
-    // FARMS (spesso bloccato 0 bytes su FS25)
     const farmsXml=await fetchSavegameFile('farms');
 
-    // CERCA SOLDI OVUNQUE
     let money=null;
     let moneySource='nessuno';
     
@@ -133,9 +134,9 @@ async function getServerStats(){
     }
 
     if(money!==null) console.log(`>>> SOLDI TROVATI da ${moneySource}: ${money}`);
-    else console.log(`>>> Soldi non trovati in nessun file, farms presente: ${!!farmsXml} economy: ${!!economyXml} stats: ${!!statsXml}`);
+    else console.log(`>>> Soldi non trovati, farms: ${!!farmsXml} economy: ${!!economyXml} stats: ${!!statsXml}`);
 
-    return { serverName, map: mapPretty, rawMap, money, moneyFormatted: money!==null?formatMoney(money):'N/D (bloccato da server FS25)', players, currentPlayers, maxPlayers, online:true, moneySource };
+    return { serverName, map: mapPretty, rawMap, money, moneyFormatted: money!==null?formatMoney(money):'N/D', players, currentPlayers, maxPlayers, online:true, moneySource };
   }catch(e){ console.log(`Errore getServerStats: ${e.message}`); return { online:false, error:e.message }; }
 }
 
