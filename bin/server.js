@@ -1,7 +1,6 @@
 
 const fs = require('fs');
 const path = require('path');
-const http = require('http');
 const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 
 // --- CONFIG CON FALLBACK ---
@@ -124,10 +123,6 @@ const initialise = () => {
     fs.writeFileSync(dbPath, JSON.stringify(db, null, 2), 'utf8');
   }
   if (!discordToken) { console.error('TOKEN mancante!'); process.exit(1); }
-
-  // Mini web server per Render (evita No open ports detected)
-  const port = process.env.PORT || 10000;
-  http.createServer((req,res)=>{ res.writeHead(200,{'Content-Type':'text/plain'}); res.end('FS25 Bot is live'); }).listen(port, ()=>{ console.log(`Mini web server attivo su porta ${port} per Render`); });
 
   client.login(discordToken);
 };
