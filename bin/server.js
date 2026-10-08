@@ -4,9 +4,16 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBit
 
 const FS25_IP = '46.251.234.146';
 const FS25_PORT = '10910';
-const FS25_CODE = 'ef83050ebbeba59d4509436dc14f1e3e';
+const FS25_CODE = process.env.FS_CODE || process.env.FARMING_SIMULATOR_BOT_CODE || 'ef83050ebbeba59d4509436dc14f1e3e';
 const FS25_DASH = `http://${FS25_IP}:${FS25_PORT}`;
 const POLL_SECONDS = 60;
+
+// Supporta SIA i tuoi vecchi nomi FARMING_SIMULATOR_BOT_* SIA i nuovi
+const BOT_TOKEN = process.env.FARMING_SIMULATOR_BOT_TOKEN || process.env.FARMING_SIMULATOR_BO4 || process.env.DISCORD_TOKEN || process.env.BOT_TOKEN;
+const STATUS_CHANNEL_ID = process.env.FARMING_SIMULATOR_BOT_CHANNEL_ID || process.env.FARMING_SIMULATOR_BO1 || process.env.STATUS_CHANNEL_ID || '1332514682703851541';
+const STATUS_MESSAGE_ID = process.env.FARMING_SIMULATOR_BOT_MESSAGE_ID || process.env.FARMING_SIMULATOR_BOT_STATUS_MESSAGE_ID || process.env.STATUS_MESSAGE_ID || '1557583647530295297';
+
+console.log(`Env check: TOKEN presente=${!!BOT_TOKEN} len=${BOT_TOKEN?.length || 0} CHANNEL=${STATUS_CHANNEL_ID} MESSAGE=${STATUS_MESSAGE_ID} FS_CODE=${FS25_CODE}`);
 
 function prettyMapName(raw) {
   if (!raw) return 'N/D';
@@ -106,16 +113,13 @@ async function getServerStats() {
   } catch (e) { console.log(`Errore getServerStats: ${e.message}`); return { online: false, error: e.message }; }
 }
 
-let statusMessageId = process.env.STATUS_MESSAGE_ID || '1557583647530295297';
-let statusChannelId = process.env.STATUS_CHANNEL_ID || '1332514682703851541';
-
 async function updateStatusMessage() {
   try {
     const stats = await getServerStats();
     if (!stats.online) { console.log('Server offline o errore fetch'); return; }
-    const channel = await client.channels.fetch(statusChannelId); if (!channel) return;
-    const msg = await channel.messages.fetch(statusMessageId).catch(() => null);
-    if (!msg) { console.log(`Messaggio status ${statusMessageId} non trovato`); return; }
+    const channel = await client.channels.fetch(STATUS_CHANNEL_ID); if (!channel) { console.log(`Canale ${STATUS_CHANNEL_ID} non trovato`); return; }
+    const msg = await channel.messages.fetch(STATUS_MESSAGE_ID).catch(() => null);
+    if (!msg) { console.log(`Messaggio status ${STATUS_MESSAGE_ID} non trovato`); return; }
     const embed = new EmbedBuilder()
       .setTitle(`🌾 ${stats.serverName}`)
       .setColor(stats.currentPlayers > 0 ? 0x57F287 : 0xFEE75C)
@@ -128,7 +132,7 @@ async function updateStatusMessage() {
       .setFooter({ text: `Aggiornato • IP: ${FS25_IP}:${FS25_PORT}` })
       .setTimestamp();
     await msg.edit({ embeds: [embed] });
-    console.log(`Aggiornato messaggio ${statusMessageId} - ${stats.currentPlayers} players - Mappa: ${stats.map} - Soldi: ${stats.moneyFormatted}`);
+    console.log(`Aggiornato messaggio ${STATUS_MESSAGE_ID} - ${stats.currentPlayers} players - Mappa: ${stats.map} - Soldi: ${stats.moneyFormatted}`);
   } catch (e) { console.log(`Errore updateStatus: ${e.message}`); }
 }
 
@@ -139,4 +143,8 @@ client.once('ready', async () => {
   await updateStatusMessage();
 });
 
-client.login(process.env.DISCORD_TOKEN);
+if (!BOT_TOKEN) {
+  console.error('ERRORE: BOT_TOKEN mancante! Controlla FARMING_SIMULATOR_BOT_TOKEN in Environment');
+  process.exit(1);
+}
+client.login(BOT_TOKEN);
